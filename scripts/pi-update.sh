@@ -1,46 +1,77 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-REPO_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
-APP_SERVICE="habit-tracker"
+SERVICE_NAME="${SERVICE_NAME:-habit-tracker}"
+REPO_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+ENV_FILE="${ENV_FILE:-$HOME/habit-tracker-secrets/.env}"
 
-health_check() {
-  local url="$1"
-  echo "Checking health: $url"
-  curl --silent --show-error --fail "$url"
-  echo
-}
+log() { printf "\n==> %s\n" "$*"; }
 
+if [[ ! -f "$ENV_FILE" ]]; then
+  echo "Error: Env file not found at: $ENV_FILE"
+  exit 1
+fi
+
+log "Loading env from $ENV_FILE"
+set -a
+# shellcheck disable=SC1090
+. "$ENV_FILE"
+set +a
+
+if [[ -z "${DATABASE_URL:-}" ]]; then
+  echo "Error: DATABASE_URL is not set (check $ENV_FILE)"
+  exit 1
+fi
+
+if [[ "$DATABASE_URL" != file:* ]]; then
+  echo "Error: Expected SQLite DATABASE_URL starting with file: (got: $DATABASE_URL)"
+  exit 1
+fi
+
+DB_PATH="${DATABASE_URL#file:}"
+if [[ "$DB_PATH" != /* ]]; then
+  DB_PATH="$(cd "$REPO_DIR" && realpath -m "$DB_PATH")"
+fi
+
+DB_DIR="$(dirname "$DB_PATH")"
+BACKUP_DIR="${BACKUP_DIR:-$DB_DIR/backups}"
+
+log "Database path: $DB_PATH"
+mkdir -p "$DB_DIR" "$BACKUP_DIR"
+
+if [[ -f "$DB_PATH" ]]; then
+  TS="$(date +%Y%m%d-%H%M%S)"
+  BACKUP_FILE="$BACKUP_DIR/db-$TS.sqlite"
+  log "Backing up database -> $BACKUP_FILE"
+  cp -a "$DB_PATH" "$BACKUP_FILE"
+else
+  log "Warning: DB file not found yet at $DB_PATH (continuing without backup)"
+fi
+
+log "Updating repo (git pull)"
 cd "$REPO_DIR"
-
-echo "==> Backing up database"
-"$SCRIPT_DIR/backup-db.sh"
-
-echo "==> Pulling latest code (fast-forward only)"
 git pull --ff-only
 
-echo "==> Installing dependencies"
-npm ci
+log "Installing dependencies (npm ci)"
+npm ci --include=dev
 
-export DATABASE_URL="${DATABASE_URL:-file:/home/pi/habit-tracker-data/db.sqlite}"
-echo "==> Running Prisma migrations (forward-only)"
+log "Prisma generate"
+npx prisma generate
+
+log "Prisma migrate deploy"
 npx prisma migrate deploy
 
-echo "==> Building app"
+log "Building app"
 npm run build
 
-echo "==> Restarting systemd service: $APP_SERVICE"
-sudo systemctl restart "$APP_SERVICE"
+log "Restarting service: $SERVICE_NAME"
+sudo systemctl restart "$SERVICE_NAME"
 
-printf '==> Verifying service status: '
-sudo systemctl is-active "$APP_SERVICE"
+log "Verifying health"
+curl -fsS "http://127.0.0.1:3000/api/healthz" | cat
+echo
 
-echo "==> Verifying health endpoint"
-if health_check "https://habits.local/api/healthz"; then
-  echo "Health check passed via Caddy HTTPS"
-else
-  echo "HTTPS health check failed; falling back to localhost" >&2
-  health_check "http://127.0.0.1:3000/api/healthz"
-  echo "Health check passed via localhost"
-fi
+log "Verifying manifest"
+curl -fsSI "http://127.0.0.1:3000/manifest.webmanifest" | head -n 20
+
+log "Done"
