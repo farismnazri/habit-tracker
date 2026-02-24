@@ -4,8 +4,31 @@ set -euo pipefail
 SERVICE_NAME="${SERVICE_NAME:-habit-tracker}"
 REPO_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 ENV_FILE="${ENV_FILE:-$HOME/habit-tracker-secrets/.env}"
+STARTUP_RETRIES="${STARTUP_RETRIES:-20}"
+STARTUP_DELAY_SECONDS="${STARTUP_DELAY_SECONDS:-1}"
 
 log() { printf "\n==> %s\n" "$*"; }
+
+retry_until_ok() {
+  local description="$1"
+  shift
+
+  local attempt=1
+  while (( attempt <= STARTUP_RETRIES )); do
+    if "$@"; then
+      return 0
+    fi
+
+    if (( attempt == STARTUP_RETRIES )); then
+      echo "Error: ${description} failed after ${STARTUP_RETRIES} attempts" >&2
+      return 1
+    fi
+
+    echo "Waiting for ${description} (attempt ${attempt}/${STARTUP_RETRIES})..." >&2
+    sleep "$STARTUP_DELAY_SECONDS"
+    attempt=$((attempt + 1))
+  done
+}
 
 if [[ ! -f "$ENV_FILE" ]]; then
   echo "Error: Env file not found at: $ENV_FILE"
@@ -68,10 +91,10 @@ log "Restarting service: $SERVICE_NAME"
 sudo systemctl restart "$SERVICE_NAME"
 
 log "Verifying health"
-curl -fsS "http://127.0.0.1:3000/api/healthz" | cat
+retry_until_ok "health endpoint" curl -fsS "http://127.0.0.1:3000/api/healthz" | cat
 echo
 
 log "Verifying manifest"
-curl -fsSI "http://127.0.0.1:3000/manifest.webmanifest" | head -n 20
+retry_until_ok "manifest endpoint" curl -fsSI "http://127.0.0.1:3000/manifest.webmanifest" | head -n 20
 
 log "Done"
