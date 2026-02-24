@@ -1,0 +1,31 @@
+{
+  "name": "habit-tracker",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev": "NEXT_DIST_DIR=.next-dev next dev -H 127.0.0.1 -p 3000",
+    "build": "NEXT_DIST_DIR=.next-prod next build",
+    "start": "NEXT_DIST_DIR=.next-prod next start -H 127.0.0.1",
+    "lint": "next lint",
+    "prisma:generate": "prisma generate",
+    "prisma:migrate:deploy": "sh -c 'DATABASE_URL=${DATABASE_URL:-file:/home/pi/habit-tracker-data/db.sqlite} prisma migrate deploy'"
+  },
+  "dependencies": {
+    "@prisma/adapter-better-sqlite3": "^7.4.1",
+    "@prisma/client": "^7.4.1",
+    "next": "^15.2.2",
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0",
+    "zod": "^3.24.2"
+  },
+  "devDependencies": {
+    "@types/node": "^22.13.10",
+    "@types/react": "^19.0.10",
+    "@types/react-dom": "^19.0.4",
+    "autoprefixer": "^10.4.20",
+    "postcss": "^8.5.3",
+    "prisma": "^7.4.1",
+    "tailwindcss": "^3.4.17",
+    "typescript": "^5.8.2"
+  }
+}

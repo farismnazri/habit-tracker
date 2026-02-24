@@ -1,0 +1,15 @@
+[Unit]
+Description=Habit Tracker Web App
+After=network.target
+
+[Service]
+Type=simple
+User=pi
+WorkingDirectory=/home/pi/habit-tracker
+EnvironmentFile=/home/pi/habit-tracker-secrets/.env
+ExecStart=/usr/bin/npm run start
+Restart=on-failure
+RestartSec=3
+
+[Install]
+WantedBy=multi-user.target

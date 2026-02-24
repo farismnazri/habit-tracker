@@ -1,0 +1,17 @@
+# local env
+.env
+.env.local
+
+# local sqlite (dev)
+*.sqlite
+*.sqlite-journal
+
+# node
+node_modules
+.next
+.next-dev
+.next-prod
+dist
+
+# local data folder if you use it on mac dev
+data/

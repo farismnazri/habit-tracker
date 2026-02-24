@@ -1,0 +1,31 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+}
+
+model Mission {
+  id          String       @id @default(cuid())
+  name        String
+  icon_key    String
+  color_hex   String
+  sort_order  Int
+  is_archived Boolean      @default(false)
+  created_at  DateTime     @default(now())
+  updated_at  DateTime     @updatedAt
+  completions Completion[]
+}
+
+model Completion {
+  id         String   @id @default(cuid())
+  mission_id String
+  date       String
+  is_done    Boolean  @default(true)
+  created_at DateTime @default(now())
+  updated_at DateTime @updatedAt
+  mission    Mission  @relation(fields: [mission_id], references: [id], onDelete: Restrict)
+
+  @@unique([mission_id, date])
+}
