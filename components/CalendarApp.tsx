@@ -3,7 +3,7 @@
 import Link from 'next/link';
 import { useEffect, useState } from 'react';
 import { MissionIcon } from '@/components/MissionIcon';
-import { formatDateKeyLocal, parseDateKeyLocal, shiftMonth, todayDateKeyLocal, WEEKDAY_LABELS } from '@/lib/date';
+import { formatDateKeyLocal, parseDateKeyLocal, shiftMonth, WEEKDAY_LABELS } from '@/lib/date';
 import type { CalendarMonthResponse, DayInspectorResponse, MissionRecord } from '@/types/habit';
 
 type ErrorState = string | null;
@@ -186,58 +186,45 @@ export function CalendarApp() {
 
   return (
     <main className="min-h-screen p-3 md:p-4">
-      <div className="mx-auto grid min-h-[calc(100vh-1.5rem)] max-w-[1600px] grid-cols-1 gap-3 md:min-h-[calc(100vh-2rem)] md:grid-cols-[220px_minmax(0,1fr)_340px]">
-        <aside
-          className="rounded-2xl border border-line p-3 shadow-soft md:p-4"
-          style={{ backgroundColor: monthSidePaneBackground }}
-        >
-          <div className="mb-4 flex items-center justify-between">
-            <div>
-              <h1 className="font-shardee text-4xl font-semibold text-ink">Habit Tracker</h1>
-            </div>
-          </div>
-
-          <div className="space-y-2 rounded-xl border border-line bg-canvas p-2">
-            <button
-              type="button"
-              className="w-full rounded-lg border border-line bg-canvas px-3 py-2 text-left text-sm text-ink hover:bg-surface-muted"
-              onClick={() => setMonthKey(shiftMonth(monthKey, -1))}
-            >
-              Previous month
-            </button>
-            <button
-              type="button"
-              className="w-full rounded-lg border border-line bg-canvas px-3 py-2 text-left text-sm text-ink hover:bg-surface-muted"
-              onClick={() => setMonthKey(formatMonthKeyFromNow())}
-            >
-              Today ({todayDateKeyLocal()})
-            </button>
-            <button
-              type="button"
-              className="w-full rounded-lg border border-line bg-canvas px-3 py-2 text-left text-sm text-ink hover:bg-surface-muted"
-              onClick={() => setMonthKey(shiftMonth(monthKey, 1))}
-            >
-              Next month
-            </button>
-          </div>
-
-          <div className="mt-4 space-y-2">
-            <Link
-              href="/missions"
-              className="block rounded-xl border border-active bg-active-soft px-3 py-2 text-sm font-semibold text-ink hover:bg-active"
-            >
-              Missions
-            </Link>
-          </div>
-        </aside>
-
+      <div className="mx-auto grid min-h-[calc(100vh-1.5rem)] max-w-[1600px] grid-cols-1 gap-3 md:min-h-[calc(100vh-2rem)] md:grid-cols-[minmax(0,1fr)_340px]">
         <section className="rounded-2xl border border-line bg-surface p-3 shadow-soft md:p-4">
           <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
             <div>
               <p className="text-sm font-semibold text-ink-soft">{monthHeaderYear}</p>
               <h1 className="font-shardee text-3xl leading-none text-ink md:text-7xl">{monthHeaderName}</h1>
             </div>
-            {monthLoading ? <span className="text-sm text-ink-soft">Loading month…</span> : null}
+            <div className="flex min-w-[260px] flex-col items-end gap-2">
+              <div className="flex flex-wrap justify-end gap-2">
+                <button
+                  type="button"
+                  className="rounded-lg border border-line bg-canvas px-3 py-2 text-sm font-medium text-ink hover:bg-surface-muted"
+                  onClick={() => setMonthKey(shiftMonth(monthKey, -1))}
+                >
+                  Prev month
+                </button>
+                <button
+                  type="button"
+                  className="rounded-lg border border-line bg-canvas px-3 py-2 text-sm font-medium text-ink hover:bg-surface-muted"
+                  onClick={() => setMonthKey(formatMonthKeyFromNow())}
+                >
+                  Today
+                </button>
+                <button
+                  type="button"
+                  className="rounded-lg border border-line bg-canvas px-3 py-2 text-sm font-medium text-ink hover:bg-surface-muted"
+                  onClick={() => setMonthKey(shiftMonth(monthKey, 1))}
+                >
+                  Next month
+                </button>
+              </div>
+              <Link
+                href="/missions"
+                className="rounded-xl border border-active bg-active-soft px-3 py-2 text-sm font-semibold text-ink hover:bg-active"
+              >
+                Missions
+              </Link>
+              {monthLoading ? <span className="text-sm text-ink-soft">Loading month…</span> : null}
+            </div>
           </div>
 
           <div className="grid grid-cols-7 gap-2">

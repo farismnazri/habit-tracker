@@ -39,6 +39,19 @@ curl -sS http://127.0.0.1:3000/api/healthz
 curl -sS https://habits.local/api/healthz || true
 ```
 
+## Manifest / Home Screen verification
+Verify the web app manifest is served (no 404) before testing iPad Add to Home Screen:
+
+```bash
+curl -i http://127.0.0.1:3000/manifest.webmanifest
+```
+
+Expected result: `HTTP/1.1 200` (or `HTTP/2 200` through Caddy) with JSON content.
+
+On the iPad / Safari:
+- Visit `https://habits.local/manifest.webmanifest`
+- Confirm Safari shows JSON content (not a 404 page)
+
 ## Prepare directories and env (first-time setup)
 ```bash
 sudo mkdir -p /home/pi/habit-tracker-data/backups
