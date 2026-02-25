@@ -32,6 +32,21 @@ body {
   background: var(--color-canvas);
 }
 
+@media (min-width: 768px) {
+  .calendar-viewport-shell {
+    height: 100vh;
+    height: 100svh;
+    height: 100dvh;
+    overflow: hidden;
+  }
+}
+
+.touch-scroll-y {
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior-y: contain;
+}
+
 .font-shardee {
   font-family: "Shardee", system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
   letter-spacing: 0.02em;

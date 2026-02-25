@@ -3,7 +3,7 @@ import type { MetadataRoute } from 'next';
 export default function manifest(): MetadataRoute.Manifest {
   return {
     name: 'Habit Tracker',
-    short_name: 'Habits',
+    short_name: 'Habit Tracker',
     start_url: '/',
     scope: '/',
     display: 'standalone',

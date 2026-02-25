@@ -28,6 +28,29 @@ const missionPayloadSchema = z.object({
   color_hex: z.string().trim().regex(/^#[0-9a-fA-F]{6}$/),
 });
 
+async function findMissionUsingIconKey(iconKey: string, excludeMissionId?: string) {
+  return prisma.mission.findFirst({
+    where: {
+      icon_key: iconKey,
+      ...(excludeMissionId ? { NOT: { id: excludeMissionId } } : {}),
+    },
+    select: {
+      id: true,
+      name: true,
+      is_archived: true,
+    },
+  });
+}
+
+async function assertMissionIconKeyAvailable(iconKey: string, excludeMissionId?: string) {
+  const existing = await findMissionUsingIconKey(iconKey, excludeMissionId);
+  if (!existing) return;
+
+  throw new Error(
+    `Icon ${iconKey} is already in use by ${existing.name}${existing.is_archived ? ' (archived)' : ''}. Pick a different icon.`,
+  );
+}
+
 function sortMissions(a: { sort_order: number; id: string }, b: { sort_order: number; id: string }) {
   if (a.sort_order !== b.sort_order) return a.sort_order - b.sort_order;
   return a.id.localeCompare(b.id);
@@ -228,6 +251,7 @@ export async function getMissions(): Promise<MissionsResponse> {
 
 export async function createMission(input: unknown) {
   const payload = missionPayloadSchema.parse(input);
+  await assertMissionIconKeyAvailable(payload.icon_key);
 
   const maxActive = await prisma.mission.aggregate({
     where: { is_archived: false },
@@ -247,6 +271,20 @@ export async function createMission(input: unknown) {
 
 export async function updateMission(id: string, input: unknown) {
   const payload = missionPayloadSchema.parse(input);
+  const existing = await prisma.mission.findUnique({
+    where: { id },
+    select: { id: true, icon_key: true },
+  });
+  if (!existing) {
+    throw new Error('Mission not found');
+  }
+
+  // Preserve editability for legacy records that may already collide, but block
+  // assigning a taken icon when the user changes the icon.
+  if (payload.icon_key !== existing.icon_key) {
+    await assertMissionIconKeyAvailable(payload.icon_key, id);
+  }
+
   return prisma.mission.update({
     where: { id },
     data: payload,

@@ -52,11 +52,13 @@ function IconPickerButton({
   iconKey,
   selected,
   disabled,
+  inUse,
   onSelect,
 }: {
   iconKey: string;
   selected: boolean;
   disabled: boolean;
+  inUse?: boolean;
   onSelect: (iconKey: string) => void;
 }) {
   return (
@@ -67,9 +69,10 @@ function IconPickerButton({
       disabled={disabled}
       onClick={() => onSelect(iconKey)}
       className={[
-        'flex aspect-square items-center justify-center rounded-lg border p-1 transition',
-        selected ? 'border-active bg-active-soft ring-2 ring-focus-ring' : 'border-line bg-canvas hover:bg-surface-muted',
-        disabled ? 'cursor-not-allowed opacity-60' : '',
+        'relative flex aspect-square items-center justify-center rounded-lg border p-1 transition',
+        selected ? 'border-active bg-active-soft ring-2 ring-focus-ring' : 'border-line bg-canvas',
+        !disabled && !selected ? 'hover:bg-surface-muted' : '',
+        disabled ? 'cursor-not-allowed opacity-55 grayscale' : '',
       ].join(' ')}
     >
       <img
@@ -79,6 +82,11 @@ function IconPickerButton({
         className="h-full w-full object-contain"
         draggable={false}
       />
+      {inUse ? (
+        <span className="absolute bottom-1 left-1 right-1 rounded bg-ink/80 px-1 py-0.5 text-[9px] font-semibold leading-none text-canvas">
+          In use
+        </span>
+      ) : null}
       <span className="sr-only">{iconKey}</span>
     </button>
   );
@@ -248,6 +256,27 @@ export function MissionsApp() {
 
   const visibleList = tab === 'active' ? missions.active : missions.archived;
   const isDirty = isNewMission ? !formsEqual(form, DEFAULT_FORM) : !formsEqual(form, baselineForm);
+  const allMissions = [...missions.active, ...missions.archived];
+  const editorMissionId = isNewMission ? null : selectedMission?.id ?? null;
+  const formDisabled = !!selectedMission?.is_archived && !isNewMission;
+  const iconUsersByKey = new Map<string, MissionRecord[]>();
+
+  for (const mission of allMissions) {
+    const list = iconUsersByKey.get(mission.icon_key) ?? [];
+    list.push(mission);
+    iconUsersByKey.set(mission.icon_key, list);
+  }
+
+  const duplicateIconEntries = Array.from(iconUsersByKey.entries())
+    .filter(([, missionsForIcon]) => missionsForIcon.length > 1)
+    .sort(([a], [b]) => a.localeCompare(b));
+
+  const formIconUsersOtherThanCurrent = (form.icon_key ? iconUsersByKey.get(form.icon_key) ?? [] : []).filter(
+    (mission) => mission.id !== editorMissionId,
+  );
+  const formIconConflict = formIconUsersOtherThanCurrent.length > 0;
+  const formIconChangeConflicts =
+    formIconConflict && (isNewMission || !selectedMission || form.icon_key !== selectedMission.icon_key);
 
   return (
     <main className="min-h-screen p-3 md:p-4">
@@ -309,6 +338,13 @@ export function MissionsApp() {
             <div className="mb-3 rounded-lg border border-active bg-active-soft px-3 py-2 text-sm text-ink">{error}</div>
           ) : null}
 
+          {duplicateIconEntries.length > 0 ? (
+            <div className="mb-3 rounded-lg border border-line bg-surface-muted px-3 py-2 text-sm text-ink">
+              Legacy icon collision detected for {duplicateIconEntries.length} icon
+              {duplicateIconEntries.length === 1 ? '' : 's'}. Reassign affected missions to unique icons.
+            </div>
+          ) : null}
+
           <div className="space-y-2 overflow-y-auto pr-1 md:max-h-[calc(100vh-14rem)]">
             {loading ? (
               <div className="rounded-xl border border-dashed border-line bg-canvas p-4 text-sm text-ink-soft">Loading…</div>
@@ -319,6 +355,7 @@ export function MissionsApp() {
             ) : (
               visibleList.map((mission) => {
                 const selected = !isNewMission && mission.id === selectedId;
+                const iconIsDuplicated = (iconUsersByKey.get(mission.icon_key)?.length ?? 0) > 1;
                 return (
                   <div
                     key={mission.id}
@@ -367,6 +404,11 @@ export function MissionsApp() {
                           {mission.icon_key} · {mission.color_hex} · #{mission.sort_order}
                         </span>
                       </span>
+                      {iconIsDuplicated ? (
+                        <span className="rounded-full border border-line bg-surface-muted px-2 py-0.5 text-[10px] font-semibold text-ink">
+                          Icon in use
+                        </span>
+                      ) : null}
                     </button>
                   </div>
                 );
@@ -415,8 +457,11 @@ export function MissionsApp() {
                     type="text"
                     value={form.icon_key}
                     onChange={(event) => setForm((prev) => ({ ...prev, icon_key: event.target.value }))}
-                    disabled={!!selectedMission?.is_archived && !isNewMission}
-                    className="w-full rounded-lg border border-line bg-canvas px-3 py-2 text-sm outline-none focus:border-active focus:ring-2 focus:ring-focus-ring"
+                    disabled={formDisabled}
+                    className={[
+                      'w-full rounded-lg bg-canvas px-3 py-2 text-sm outline-none focus:border-active focus:ring-2 focus:ring-focus-ring',
+                      formIconChangeConflicts ? 'border-active' : 'border-line',
+                    ].join(' ')}
                     placeholder={DEFAULT_ICON_KEY}
                   />
                 </label>
@@ -426,16 +471,30 @@ export function MissionsApp() {
                     <p className="text-sm font-medium text-ink">Icon picker</p>
                     <p className="truncate text-xs text-ink-faint">{form.icon_key || DEFAULT_ICON_KEY}</p>
                   </div>
+                  {formIconConflict ? (
+                    <div className="mb-2 rounded-lg border border-line bg-surface px-2 py-1.5 text-xs text-ink">
+                      {formIconChangeConflicts
+                        ? `This icon is already used by ${formIconUsersOtherThanCurrent[0]?.name ?? 'another mission'}. Pick a unique icon.`
+                        : 'This mission has a legacy duplicate icon assignment. You can keep it, but new assignments must be unique.'}
+                    </div>
+                  ) : null}
                   <div className="grid grid-cols-4 gap-2 md:grid-cols-5">
-                    {AVAILABLE_ICON_KEYS.map((iconKey) => (
-                      <IconPickerButton
-                        key={iconKey}
-                        iconKey={iconKey}
-                        selected={form.icon_key === iconKey}
-                        disabled={!!selectedMission?.is_archived && !isNewMission}
-                        onSelect={(nextIconKey) => setForm((prev) => ({ ...prev, icon_key: nextIconKey }))}
-                      />
-                    ))}
+                    {AVAILABLE_ICON_KEYS.map((iconKey) => {
+                      const selected = form.icon_key === iconKey;
+                      const inUseByOtherTask = (iconUsersByKey.get(iconKey) ?? []).some((mission) => mission.id !== editorMissionId);
+                      const pickerDisabled = formDisabled || (inUseByOtherTask && !selected);
+
+                      return (
+                        <IconPickerButton
+                          key={iconKey}
+                          iconKey={iconKey}
+                          selected={selected}
+                          disabled={pickerDisabled}
+                          inUse={inUseByOtherTask}
+                          onSelect={(nextIconKey) => setForm((prev) => ({ ...prev, icon_key: nextIconKey }))}
+                        />
+                      );
+                    })}
                   </div>
                 </div>
 
@@ -487,7 +546,7 @@ export function MissionsApp() {
                     <button
                       type="button"
                       onClick={saveMission}
-                      disabled={saving || !isDirty}
+                      disabled={saving || !isDirty || formIconChangeConflicts}
                       className="w-full rounded-lg bg-ink px-3 py-2 text-sm font-semibold text-canvas disabled:cursor-not-allowed disabled:opacity-50"
                     >
                       {saving ? 'Saving…' : 'Save'}

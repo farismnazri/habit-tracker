@@ -8,7 +8,7 @@ export default function Head() {
       <link rel="apple-touch-icon" sizes="167x167" href="/apple-touch-icon-v3-167x167.png?v=4" />
       <link rel="apple-touch-icon" sizes="152x152" href="/apple-touch-icon-v3-152x152.png?v=4" />
       <meta name="apple-mobile-web-app-capable" content="yes" />
-      <meta name="apple-mobile-web-app-title" content="Habits" />
+      <meta name="apple-mobile-web-app-title" content="Habit Tracker" />
     </>
   );
 }
